@@ -1,21 +1,10 @@
 """
-Calculates nutrient uptake rate using Monod kinetics.
-Returns uptake rate per hour.
-"""
-function calculate_uptake(nutrient_conc, strain_deps::StrainDeps, nutrient_idx)
-    vmax = strain_deps.uptake_rates.vmax[nutrient_idx]
-    K = strain_deps.uptake_rates.K[nutrient_idx]
-    # Return rate per hour (no dt multiplication here)
-    return vmax * nutrient_conc / (nutrient_conc + K)
-end
-
-"""
-    compute_laplacian_periodic_xy!(output_matrix, input_matrix, neighbor_weight, center_weight, dx)
+    compute_laplacian_periodic_xy!(output_matrix, input_matrix, dx)
 
 Computes the Laplacian using efficient neighbor operations with periodic boundaries in x,y
-and no-flux in z. Uses LoopVectorization for performance.
+and no-flux in z.
 """
-function compute_laplacian_periodic_xy!(output_matrix::Array{T,3}, input_matrix::Array{T,3}, neighbor_weight::Float64, center_weight::Float64, dx::Float64) where {T<:Real}
+function compute_laplacian_periodic_xy!(output_matrix::Array{T,3}, input_matrix::Array{T,3}, dx::Float64) where {T<:Real}
     nx, ny, nz = size(input_matrix)
 
     @inbounds for k in 1:nz, j in 1:ny, i in 1:nx
@@ -29,20 +18,19 @@ function compute_laplacian_periodic_xy!(output_matrix::Array{T,3}, input_matrix:
         kp = (k == nz ? k : k + 1)
         km = (k == 1 ? k : k - 1)
 
-        output_matrix[i, j, k] = (neighbor_weight * (
+        output_matrix[i, j, k] = (
             input_matrix[im, j, k] + input_matrix[ip, j, k] +
             input_matrix[i, jm, k] + input_matrix[i, jp, k] +
-            input_matrix[i, j, km] + input_matrix[i, j, kp]
-        ) + center_weight * input_matrix[i, j, k]) / (dx^2)
+            input_matrix[i, j, km] + input_matrix[i, j, kp] -
+            6 * input_matrix[i, j, k]) / (dx^2)
     end
 end
 
 """
-    compute_laplacian_absorbing!(output_matrix, input_matrix, neighbor_weight, center_weight, dx)
+    compute_laplacian_absorbing!(output_matrix, input_matrix, dx)
 
-TODO: Edit this
-Computes the Laplacian using efficient neighbor operations with periodic boundaries in x,y
-and no-flux in z. Uses LoopVectorization for performance.
+Computes the Laplacian using efficient neighbor operations with open boundaries in x,y
+and top of z but no-flux in bottom of z.
 """
 function compute_laplacian_absorbing!(output_matrix::Array{T,3}, input_matrix::Array{T,3}, dx::Float64, outside_val=0.0) where {T<:Real}
     nx, ny, nz = size(input_matrix)
@@ -80,36 +68,6 @@ function compute_laplacian_absorbing!(output_matrix::Array{T,3}, input_matrix::A
                 output_matrix[i, j, k] += outside_val - input_matrix[i, j, k]
             end
             output_matrix[i, j, k] /= dx^2
-        end
-    end
-end
-
-"""
-Performs multiple steps of nutrient diffusion using Euler forward method.
-dt = 1/(time_steps_per_hour * n_diffusion_steps) hours
-"""
-function diffuse_nutrients!(model, n_diffusion_steps)
-    # dt in hours for each diffusion sub-step
-    dt = 1.0 / (model.time_steps_per_hour * n_diffusion_steps)
-
-    @inbounds for _ in 1:n_diffusion_steps
-        for n_idx in eachindex(model.nutrients)
-            # Compute Laplacian using pre-allocated arrays
-            compute_laplacian_absorbing!(
-                model.nutrients_changes[n_idx],
-                model.nutrients[n_idx],
-                model.cell_diameter,
-                0.0
-            )
-            # compute_laplacian_periodic_xy!(
-            #     model.nutrients_changes[n_idx],
-            #     model.nutrients[n_idx],
-            #     model.neighbor_weight,
-            #     model.center_weight,
-            #     model.cell_diameter
-            # )
-            # Forward Euler step: u_{n+1} = u_n + dt * D * ∇²u_n
-            @. model.nutrients[n_idx] += dt * model.D * model.nutrients_changes[n_idx]
         end
     end
 end
