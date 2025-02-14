@@ -149,7 +149,9 @@ function build_model(;
     time_steps_per_hour=nothing,
     # strains and nutrients
     strain_props,
-    D,
+    nutrients=nothing,
+    nutrient_props=nothing,
+    D=nothing,
     # initial setup
     initial_cell_density, # this is for generating the initial agents
     seed=42,
@@ -165,11 +167,19 @@ function build_model(;
     end
 
     n_nutrients = length(first(strain_props).uptakes)
-    nutrients = [zeros(Float64, dims) for _ in 1:n_nutrients]
+    if isnothing(nutrients)
+        nutrients = [zeros(Float64, dims) for _ in 1:n_nutrients]
+    end
+
+    if isnothing(nutrient_props) && !isnothing(D)
+        nutrient_props = [NutrientProps(D) for _ in 1:n_nutrients]
+    else
+        throw(ArgumentError("need to provide either nutrient_props or D"))
+    end
 
     properties = ModelProperties(
         dt, dx,
-        strain_props, [NutrientProps(D) for _ in 1:n_nutrients],
+        strain_props, nutrient_props,
         nutrients, map(similar, nutrients),
         DirectDiffusionNH(100)
     )
