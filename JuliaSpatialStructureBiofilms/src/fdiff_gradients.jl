@@ -1,4 +1,10 @@
 """
+General and fast function that calculate finite difference gradiends (tbh
+its only laplacians) with different BCs etc. All such functions should
+work on being passed the output matrix, input matrix and the grid cell spacing.
+"""
+
+"""
     compute_laplacian_periodic_xy!(output_matrix, input_matrix, dx)
 
 Computes the Laplacian using efficient neighbor operations with periodic boundaries in x,y

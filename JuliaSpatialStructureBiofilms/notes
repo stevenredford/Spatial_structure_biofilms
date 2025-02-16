@@ -1,0 +1,34 @@
+Steven sent me that consumption rate c(S) = alpha*r*(S/(S+K_M))
+    where alpha is the amount of resource needed for reproduction and r the max rep rate
+
+In the code we wrote with Steven a while ago the logic was:
+    uptake = (vmax * S * dt) / (S + km * dt) which is almost definitely wrong...
+    and then S -= uptake along with cell.int_S += uptake
+
+so lets do
+uptake = vmax * (S/(S+K)) * dt
+this given [vmax] = #res / T and S, K can be either in conc. or amount per cell
+
+
+pseudocode:
+    for each model step of dt do:
+        diffuse, produce and consume nutrients - this has multiple implementations
+        ideal procedure for this is:
+            do for a number of steps N~100:
+                diff_dt=dt/N
+                diffuse all nutrients using their diffusion constants for time diff_dt (careful about numerics)
+                for each alive cell try to uptake each of its nutrients:
+                    uptake_of_a_nut = vmax_strain_nut * (S/(S+K_strain_nut*grid_cell_volume)) * diff_dt
+                    then add this amount to cells internal nutrients
+                    and remove the same amount from the nutrient grid
+                for each alive cell produce the nutrients it produces:
+                    add release_rate*diff_dt to the the S grid
+
+        # do life/death
+        for each cell that is alive:
+            maybe die with chance death_rate*dt
+            if didn't die:
+                if isn't blocked (quiescence) and all alphas are met then reproduce with chance growth_rate*dt:
+                    this means try to find a new empty budding position within layer or one layer above
+                    if such a position was found then reset internal nutrients to 0 and make a new cell of the same strain at new position
+                    otherwise don't reset internal nutrience (and potentially set a flag for speed)
