@@ -31,7 +31,7 @@ function handle_nutrients!(dd::DirectDiffusionNH, model)
         for (nut, temp, np) in zip(model.nutrients, model.nutrients_temp, model.nutrient_props)
             dd.compute_laplacian_func!(temp, nut, model.dx)
             for i in eachindex(nut)
-                nut[i] += diff_dt * np.D * temp
+                nut[i] += diff_dt * np.D * temp[i]
                 temp[i] = 0.0
             end
         end
