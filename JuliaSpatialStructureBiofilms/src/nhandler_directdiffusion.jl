@@ -47,7 +47,7 @@ function handle_nutrients!(dd::DirectDiffusionNH, model)
                 for nut_i in eachindex(model.nutrients)
                     if strain.uptakes[nut_i]
                         nut_cell = model.nutrients[nut_i][cell.pos...]
-                        ratio = nut_cell / (nut_cell + strain.uptake_Ks[nut_i])
+                        ratio = nut_cell / (nut_cell + strain.uptake_Ks[nut_i] * model.dx^3)
                         uptake = strain.uptake_vmaxs[nut_i] * ratio * diff_dt
 
                         cell.internal_nutrients[nut_i] += uptake
